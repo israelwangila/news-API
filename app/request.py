@@ -1,125 +1,153 @@
+from app import app
+import datetime
 import urllib.request,json
-from .models import Article, Category, Source , Headlines
+from .models import news,sources,entertainment
+
+News = news.News
+Sources = sources.Sources
+Entertainment = entertainment.Entertainment
 
 # Getting api key
-api_key = None
-# Getting source url
-source_url= None
-# Getting source url
-cat_url= None
+api_key = app.config['NEWS_API_KEY']
 
-def configure_request(app):
-    global api_key, source_url, cat_url
-    api_key = app.config['NEWS_API_KEY']
-    source_url= app.config['NEWS_API_SOURCE_URL']
-    cat_url=app.config['CAT_API_URL']
+# Getting the news base url
+news_base_url = app.config["NEWS_HIGHLIGHTS_BASE_URL"]
 
+# Getting the sources base url
+sources_base_url = app.config["NEWS_SOURCE_BASE_URL"]
 
-def get_source():
-    '''
-    Function that gets the json response to url request
-    '''
-    get_source_url= source_url.format(api_key)
-    # print(get_source_url)
-    with urllib.request.urlopen(get_source_url) as url:
-        get_sources_data = url.read()
-        get_sources_response = json.loads(get_sources_data)
-
-        source_results = None
-
-        if get_sources_response['sources']:
-            source_results_list = get_sources_response['sources']
-            source_results = process_results(source_results_list)
-
-    return source_results
-
-def process_results(source_list):
-    '''
-    function to process results and transform them to a list of objects
-    Args:
-        source_list:dictionary cotaining source details
-    Returns:
-        source_results: A list of source objects
-    '''
-    source_results = []
-    for source_item in source_list:
-        id = source_item.get('id')
-        name = source_item.get('name')
-        description = source_item.get('description')
-        url = source_item.get('url')
-        if id:
-            source_object = Source(id,name,description,url)
-            source_results.append(source_object)
-
-    return source_results
-
-def article_source(id):
-    article_source_url = 'https://newsapi.org/v2/top-headlines?sources={}&apiKey={}'.format(id,api_key)
-    print(article_source_url)
-    with urllib.request.urlopen(article_source_url) as url:
-        article_source_data = url.read()
-        article_source_response = json.loads(article_source_data)
-
-        article_source_results = None
-
-        if article_source_response['articles']:
-            article_source_list = article_source_response['articles']
-            article_source_results = process_articles_results(article_source_list)
+# Getting the entertainment news base url
+entertainment_base_url = app.config["NEWS_ENTERTAINMENT_BASE_URL"]
 
 
-    return article_source_results
+def get_news(country):
+	'''
+	Function that gets the json response to our url request
+	'''
+	get_news_url = news_base_url.format(country,api_key)
 
-def process_articles_results(news):
-    '''
-    function that processes the json files of articles from the api key
-    '''
-    article_source_results = []
-    for article in news:
-        author = article.get('author')
-        description = article.get('description')
-        time = article.get('publishedAt')
-        url = article.get('urlToImage')
-        image = article.get('url')
-        title = article.get ('title')
+	with urllib.request.urlopen(get_news_url) as url:
+		get_news_data = url.read()
+		get_news_response = json.loads(get_news_data)
 
-        if url:
-            article_objects = Article(author,description,time,image,url,title)
-            article_source_results.append(article_objects)
+		news_results = None
 
-    return article_source_results
+		if get_news_response['articles']:
+			news_result_list = get_news_response['articles']
+			news_results = process_newsResults(news_result_list)
 
-def get_category(cat_name):
-    '''
-    function that gets the response to the category json
-    '''
-    get_category_url = cat_url.format(cat_name,api_key)
-    print(get_category_url)
-    with urllib.request.urlopen(get_category_url) as url:
-        get_category_data = url.read()
-        get_cartegory_response = json.loads(get_category_data)
 
-        get_cartegory_results = None
+	return news_results
 
-        if get_cartegory_response['articles']:
-            get_cartegory_list = get_cartegory_response['articles']
-            get_cartegory_results = process_articles_results(get_cartegory_list)
 
-    return get_cartegory_results
+def process_newsResults(news_list):
+	'''
+	Function that processes the news results and transforms them to a list of objects
+	'''
 
-def get_headlines():
-    '''
-    function that gets the response to the category json
-    '''
-    get_headlines_url = 'https://newsapi.org/v2/top-headlines?country=us&apiKey={}'.format(api_key)
-    print(get_headlines_url)
-    with urllib.request.urlopen(get_headlines_url) as url:
-        get_headlines_data = url.read()
-        get_headlines_response = json.loads(get_headlines_data)
+	news_results = []
+	for news_item in news_list:
+		title = news_item.get('title')
+		description = news_item.get('description')
+		publishedAt = news_item.get('publishedAt')
+		content = news_item.get('content')
+		url = news_item.get('url')
+		img_url = news_item.get('urlToImage')
 
-        get_headlines_results = None
+		date_time_obj = datetime.datetime.strptime(publishedAt, '%Y-%m-%dT%H:%M:%SZ')
+		publishedAt = date_time_obj.date()
 
-        if get_headlines_response['articles']:
-            get_headlines_list = get_headlines_response['articles']
-            get_headlines_results = process_articles_results(get_headlines_list)
+		if img_url:
+			news_object = News(title,description,publishedAt,content,url,img_url)
+			news_results.append(news_object)
 
-    return get_headlines_results
+	return news_results
+
+
+
+
+def get_sources():
+	'''
+	Function that gets the json response to our url request
+	'''
+	get_sources_url = sources_base_url.format(api_key)
+
+	with urllib.request.urlopen(get_sources_url) as url:
+		get_sources_data = url.read()
+		get_sources_response = json.loads(get_sources_data)
+
+		sources_results = None
+
+		if get_sources_response['sources']:
+			sources_result_list = get_sources_response['sources']
+			sources_results = process_sourcesResults(sources_result_list)
+
+
+	return sources_results
+
+
+
+
+def process_sourcesResults(sources_list):
+	'''
+	Function that processes the sources results and transforms them to a list of objects
+	'''
+
+	sources_results = []
+	for source_item in sources_list:
+		name = source_item.get('name')
+		description = source_item.get('description')
+		source_url = source_item.get('url')
+
+		source_object = Sources(name,description,source_url)
+		sources_results.append(source_object)
+
+	return sources_results
+
+
+
+
+def getEntertainmentNews(category):
+	'''
+	Function that processes the entertainment news results and transforms them to a list of objects
+	'''
+
+	get_entertainmentNews_url = entertainment_base_url.format(category,api_key)
+
+	with urllib.request.urlopen(get_entertainmentNews_url) as url:
+		get_entertainmentNews_data = url.read()
+		get_entertainmentNews_response = json.loads(get_entertainmentNews_data)
+
+		entertainmentNews_results = None
+
+		if get_entertainmentNews_response['articles']:
+			entertainmentNews_result_list = get_entertainmentNews_response['articles']
+			entertainmentNews_results = process_EntertainmentNews_Results(entertainmentNews_result_list)
+
+
+	return entertainmentNews_results
+
+
+
+
+def process_EntertainmentNews_Results(entertainmentNews_result_list):
+	'''
+	Function that processes the sources results and transforms them to a list of objects
+	'''
+	idNumber = 1
+	entertainmentNews_results = []
+	for entertainment_item in entertainmentNews_result_list:
+		name = entertainment_item.get('name')
+		description = entertainment_item.get('description')
+		publishedAt = entertainment_item.get('publishedAt')
+		source_url = entertainment_item.get('url')
+
+		date_time_obj = datetime.datetime.strptime(publishedAt, '%Y-%m-%dT%H:%M:%SZ')
+		publishedAt = date_time_obj.date()
+
+
+		entertainmentNews_object = Entertainment(idNumber,name,description,publishedAt,source_url)
+		entertainmentNews_results.append(entertainmentNews_object)
+		idNumber=idNumber+1
+
+	return entertainmentNews_results
